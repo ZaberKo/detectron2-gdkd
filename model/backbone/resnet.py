@@ -23,7 +23,7 @@ __all__ = [
     "BasicStem",
     "ResNet",
     "make_stage",
-    "build_resnet_backbone",
+    "build_resnet_backbone_kd",
 ]
 
 
@@ -474,6 +474,7 @@ def build_resnet_backbone_kd(cfg, input_shape):
     # add ResNet18 setting
     """
     Create a ResNet instance from config.
+    An old det2 impl from ReviewKD. The det2's latest impl is build_resnet_backbone()
 
     Returns:
         ResNet: a :class:`ResNet` instance.
