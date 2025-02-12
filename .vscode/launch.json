@@ -1,0 +1,111 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Calc Detection Teacher logits",
+            "type": "python",
+            "request": "launch",
+            "module": "debug.calc_coco_teacher_logits",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--config-file",
+                // "configs/DKD/DKD-R18-R101.yaml",
+                // "configs/DKD/DKD-R50-R101.yaml",
+                // "configs/ReviewKD/ReviewKD-MV2-R50.yaml",
+                // "configs/ReviewKD/ReviewKD-R18-R101.yaml",
+                // "configs/GDKD/GDKD-R18-R101.yaml",
+                "debug/DKD-R18-R101.yaml",
+                "--ckpt",
+                "output_test/DKD-R18-R101_temjbxn9",
+                "--img-bs",
+                "7"
+            ],
+            "env": {
+                // "WANDB_MODE": "offline",
+                "WANDB_MODE": "disabled"
+            }
+        },
+        {
+            "name": "Train Detection",
+            "type": "python",
+            "request": "launch",
+            "program": "train_net.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--config-file",
+                // "configs/DKD/DKD-R18-R101.yaml",
+                // "configs/DKD/DKD-R50-R101.yaml",
+                // "configs/ReviewKD/ReviewKD-MV2-R50.yaml",
+                // "configs/ReviewKD/ReviewKD-R18-R101.yaml",
+                "configs/GDKD3/GDKD3-R18-R101.yaml",
+                // "configs/GDKD/ReviewGDKD-R18-R101.yaml",
+                "--num-gpus",
+                "1",
+                "--debug",
+                "SOLVER.IMS_PER_BATCH",
+                "4",
+                // "KD.GDKD.DISTILL_TYPE",
+                // "things"
+            ],
+            "env": {
+                // "WANDB_MODE": "offline",
+                "WANDB_MODE": "disabled"
+            }
+        },
+        {
+            "name": "Train Detection Ori",
+            "type": "python",
+            "request": "launch",
+            "program": "train_net.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--config-file",
+                // "configs/DKD/DKD-R18-R101.yaml",
+                // "configs/DKD/DKD-R50-R101.yaml",
+                // "configs/ReviewKD/ReviewKD-MV2-R50.yaml",
+                "configs/ReviewKD/ReviewKD-R18-R101_ori.yaml",
+                // "configs/GDKD/GDKD-R18-R101.yaml",
+                // "configs/GDKD/ReviewGDKD-R18-R101.yaml",
+                "--num-gpus",
+                "1",
+                "--debug",
+                "SOLVER.IMS_PER_BATCH",
+                "2",
+            ],
+            "env": {
+                // "WANDB_MODE": "offline",
+                "WANDB_MODE": "disabled"
+            }
+        },
+        {
+            "name": "Train Detection Eval",
+            "type": "python",
+            "request": "launch",
+            "program": "train_net.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--config-file",
+                "configs/DKD/DKD-R18-R101.yaml",
+                // "configs/DKD/DKD-R50-R101.yaml",
+                // "configs/ReviewKD/ReviewKD-MV2-R50.yaml",
+                // "configs/ReviewKD/ReviewKD-R18-R101.yaml",
+                "--num-gpus",
+                "1",
+                "--eval-only",
+                "OUTPUT_DIR",
+                "./output/debug",
+                "SOLVER.IMS_PER_BATCH",
+                "2",
+                "TEST.AUG.ENABLED",
+                "True"
+            ]
+        },
+    ]
+}

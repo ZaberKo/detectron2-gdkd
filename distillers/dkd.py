@@ -115,7 +115,7 @@ def rcnn_dkd_loss(s_predictions, t_predictions, gt_classes, alpha, beta, tempera
         ratio = mask.sum().item() / batch_size
         # TODO: multiply N/#fg or 1/#fg?
         # loss_dkd = loss_dkd / num_fg
-        info_dict["distill_fg_ratio"] = ratio
+        info_dict["distill_fg_ratio"] = ratio.detach()
 
     return loss_dkd, info_dict
 
@@ -174,8 +174,8 @@ def dkd_loss(logits_student, logits_teacher, target, alpha, beta, temperature, m
     dkd_loss = alpha * tckd_loss + beta * nckd_loss
 
     info = dict(
-        loss_tckd=tckd_loss,
-        loss_nckd=nckd_loss,
+        loss_tckd=tckd_loss.detach(),
+        loss_nckd=nckd_loss.detach(),
     )
 
     return dkd_loss, info
