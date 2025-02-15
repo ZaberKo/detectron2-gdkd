@@ -30,6 +30,7 @@ dependencies:
   - tensorboard
   - tensorboardx
   - timm
+  - wandb
   - yacs
   - hydra-core
   - tqdm
