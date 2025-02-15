@@ -84,6 +84,13 @@ def main(args):
     # wandb_cfg=cfg.clone()
     # wandb_cfg.defrost()
 
+    cfg.defrost()
+    output_dirname = f"{experiment_name}_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
+    cfg.OUTPUT_DIR = os.path.join(cfg.OUTPUT_DIR, output_dirname)
+    cfg.freeze()
+
+    default_setup(cfg, args)
+
     if comm.is_main_process() and cfg.EXPERIMENT.WANDB:
         wandb.init(
             project=cfg.EXPERIMENT.PROJECT,
@@ -91,15 +98,8 @@ def main(args):
             # config=wandb_cfg, # set later at WandbWriter
             tags=tags,
             group=experiment_name + "_group" if args.group else None,
-            # settings=wandb.Settings(start_method="fork"),
+            dir=cfg.OUTPUT_DIR,
         )
-
-    cfg.defrost()
-    output_dirname = f"{experiment_name}_{wandb.run.id}"
-    cfg.OUTPUT_DIR = os.path.join(cfg.OUTPUT_DIR, output_dirname)
-    cfg.freeze()
-
-    default_setup(cfg, args)
 
     """
     If you'd like to do anything fancier than the standard training logic,
