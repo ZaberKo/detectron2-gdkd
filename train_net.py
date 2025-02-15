@@ -32,7 +32,7 @@ import logging
 import wandb
 
 
-def setup(args):
+def setup_cfg(args):
     """
     Create configs and perform basic setups.
     """
@@ -41,12 +41,12 @@ def setup(args):
     cfg.merge_from_list(args.opts)
 
     cfg.freeze()
-    default_setup(cfg, args)
+
     return cfg
 
 
 def main(args):
-    cfg = setup(args)
+    cfg = setup_cfg(args)
 
     if args.debug:
         cfg.defrost()
@@ -65,41 +65,41 @@ def main(args):
             verify_results(cfg, res)
         return res
 
-    if comm.is_main_process():
+    tags = cfg.EXPERIMENT.TAG
+    if tags is None or len(tags) == 0:
+        tags = [cfg.KD.TYPE]
+    # tags.append(cfg.KD.TYPE)
 
-        tags = cfg.EXPERIMENT.TAG
-        if tags is None or len(tags) == 0:
-            tags = [cfg.KD.TYPE]
-        # tags.append(cfg.KD.TYPE)
+    if args.opts:
+        addtional_tags = [
+            "{}:{}".format(k, v) for k, v in zip(args.opts[::2], args.opts[1::2])
+        ]
+        tags += addtional_tags
 
-        if args.opts:
-            addtional_tags = ["{}:{}".format(k, v)
-                              for k, v in zip(args.opts[::2], args.opts[1::2])]
-            tags += addtional_tags
+    if not cfg.EXPERIMENT.NAME:
+        experiment_name = "-".join(tags)
+    else:
+        experiment_name = cfg.EXPERIMENT.NAME
 
-        if not cfg.EXPERIMENT.NAME:
-            experiment_name = "-".join(tags)
-        else:
-            experiment_name = cfg.EXPERIMENT.NAME
+    # wandb_cfg=cfg.clone()
+    # wandb_cfg.defrost()
 
-        wandb_cfg=cfg.clone()
-        # wandb_cfg.defrost()
+    if comm.is_main_process() and cfg.EXPERIMENT.WANDB:
+        wandb.init(
+            project=cfg.EXPERIMENT.PROJECT,
+            name=experiment_name,
+            # config=wandb_cfg, # set later at WandbWriter
+            tags=tags,
+            group=experiment_name + "_group" if args.group else None,
+            # settings=wandb.Settings(start_method="fork"),
+        )
 
-        if cfg.EXPERIMENT.WANDB:
-            wandb.init(
-                project=cfg.EXPERIMENT.PROJECT,
-                name=experiment_name,
-                # config=wandb_cfg, # set later at WandbWriter
-                tags=tags,
-                group=experiment_name+"_group" if args.group else None,
-                settings=wandb.Settings(start_method="fork")
-            )
+    cfg.defrost()
+    output_dirname = f"{experiment_name}_{wandb.run.id}"
+    cfg.OUTPUT_DIR = os.path.join(cfg.OUTPUT_DIR, output_dirname)
+    cfg.freeze()
 
-        cfg.defrost()
-        # cfg.OUTPUT_DIR = os.path.join(cfg.OUTPUT_DIR, f'{cfg.KD.TYPE}|{",".join(addtional_tags)}_{args.id}_{datetime.now().strftime("%Y-%m-%d-%H-%M-%S")}')
-        output_dirname = f'{experiment_name}_{wandb.run.id}'
-        cfg.OUTPUT_DIR = os.path.join(cfg.OUTPUT_DIR, output_dirname)
-        cfg.freeze()
+    default_setup(cfg, args)
 
     """
     If you'd like to do anything fancier than the standard training logic,
@@ -110,8 +110,7 @@ def main(args):
     trainer.resume_or_load(resume=args.resume)
     if cfg.TEST.AUG.ENABLED:
         trainer.register_hooks(
-            [hooks.EvalHook(
-                0, lambda: trainer.test_with_TTA(cfg, trainer.model))]
+            [hooks.EvalHook(0, lambda: trainer.test_with_TTA(cfg, trainer.model))]
         )
 
     trainer.train()
