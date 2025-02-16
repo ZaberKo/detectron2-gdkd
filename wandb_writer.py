@@ -22,8 +22,6 @@ class WandbWriter(EventWriter):
         self.window_size = window_size
         self.cfg = cfg
 
-        wandb.config.update(cfg.clone())
-
         self.seed = torch.initial_seed() % 2**31
         wandb.summary['seed'] = self.seed
 
@@ -39,6 +37,4 @@ class WandbWriter(EventWriter):
                 wandb.log({k: v}, step=record_iter)
 
     def close(self):
-        # wandb.finish()
-        # call this when ddp is finished
-        pass
+        wandb.finish()

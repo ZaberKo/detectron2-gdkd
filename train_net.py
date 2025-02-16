@@ -81,9 +81,6 @@ def main(args):
     else:
         experiment_name = cfg.EXPERIMENT.NAME
 
-    # wandb_cfg=cfg.clone()
-    # wandb_cfg.defrost()
-
     cfg.defrost()
     output_dirname = f"{experiment_name}_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
     cfg.OUTPUT_DIR = os.path.join(cfg.OUTPUT_DIR, output_dirname)
@@ -95,7 +92,7 @@ def main(args):
         wandb.init(
             project=cfg.EXPERIMENT.PROJECT,
             name=experiment_name,
-            # config=wandb_cfg, # set later at WandbWriter
+            config=cfg.clone(), # set later at WandbWriter
             tags=tags,
             group=experiment_name + "_group" if args.group else None,
             dir=cfg.OUTPUT_DIR,
@@ -116,8 +113,6 @@ def main(args):
     trainer.train()
 
     comm.synchronize()
-    if comm.is_main_process():
-        wandb.finish()
     logger = logging.getLogger("detectron2")
     logger.info("Wait for 30 seconds before exiting")
 
