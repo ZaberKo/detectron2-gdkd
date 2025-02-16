@@ -156,6 +156,7 @@ class GDKD3(RCNNKD):
             w0=self.kd_args.GDKD3.W0,
             w1=self.kd_args.GDKD3.W1,
             temperature=self.kd_args.GDKD3.T,
+            distill_type=self.kd_args.GDKD3.DISTILL_TYPE,
         )
 
         self.record_info(info_dict)
@@ -177,34 +178,61 @@ def rcnn_gdkd_loss(
     t_logits, t_bbox_offsets = t_predictions
     gt_classes = torch.cat(tuple(gt_classes), 0).reshape(-1)
 
-    num_classes = s_logits.shape[1]
-    batch_size = gt_classes.shape[0]
-
-    if distill_type == "things":
-        # ignore background
+    empty_fg_flag = False
+    info_dict = {}
+    if distill_type == "fg":
+        # ignore background images
+        num_classes = s_logits.shape[1]
+        batch_size = gt_classes.shape[0]
         mask = gt_classes != num_classes - 1
-        gt_classes = gt_classes[mask]
+        ratio = mask.sum().item() / batch_size
+        info_dict["distill_fg_ratio"] = ratio
+
         s_logits = s_logits[mask]
         t_logits = t_logits[mask]
+        empty_fg_flag = torch.count_nonzero(mask) == 0
 
-        s_logits = s_logits[:, :-1]
-        t_logits = t_logits[:, :-1]
+    loss_gdkd, loss_info_dict = gdkd_loss(
+        s_logits, t_logits, k, w0, w1, w2, temperature
+    )
 
-    loss_gdkd, info_dict = gdkd_loss(s_logits, t_logits, k, w0, w1, w2, temperature)
+    if empty_fg_flag:
+        loss_gdkd = torch.zeros_like(loss_gdkd)
+        loss_info_dict = {k: torch.zeros_like(v) for k, v in loss_info_dict.items()}
 
-    if distill_type == "things":
-        ratio = mask.sum().float() / batch_size
-        info_dict["distill_fg_ratio"] = ratio.detach()
+    info_dict.update(loss_info_dict)
 
     return loss_gdkd, info_dict
 
 
-def rcnn_gdkd3_loss(s_predictions, t_predictions, gt_classes, w0, w1, temperature):
+def rcnn_gdkd3_loss(
+    s_predictions, t_predictions, gt_classes, w0, w1, temperature, distill_type
+):
     s_logits, s_bbox_offsets = s_predictions
     t_logits, t_bbox_offsets = t_predictions
     gt_classes = torch.cat(tuple(gt_classes), 0).reshape(-1)
 
-    loss_gdkd, info_dict = gdkd3_loss(s_logits, t_logits, w0, w1, temperature)
+    empty_fg_flag = False
+    info_dict = {}
+    if distill_type == "fg":
+        # ignore background images
+        num_classes = s_logits.shape[1]
+        batch_size = gt_classes.shape[0]
+        mask = gt_classes != num_classes - 1
+        ratio = mask.sum().item() / batch_size
+        info_dict["distill_fg_ratio"] = ratio
+
+        s_logits = s_logits[mask]
+        t_logits = t_logits[mask]
+        empty_fg_flag = torch.count_nonzero(mask) == 0
+
+    loss_gdkd, loss_info_dict = gdkd3_loss(s_logits, t_logits, w0, w1, temperature)
+
+    if empty_fg_flag:
+        loss_gdkd = torch.zeros_like(loss_gdkd)
+        loss_info_dict = {k: torch.zeros_like(v) for k, v in loss_info_dict.items()}
+
+    info_dict.update(loss_info_dict)
 
     return loss_gdkd, info_dict
 
@@ -265,7 +293,6 @@ def gdkd_loss(
     log_p1_teacher = F.log_softmax(
         soft_logits_teacher - mask_magnitude * mask_u2, dim=1
     )
-
     low_top_loss = kl_div(log_p1_student, log_p1_teacher, temperature, kl_type)
 
     # other classes loss
@@ -275,7 +302,6 @@ def gdkd_loss(
     log_p2_teacher = F.log_softmax(
         soft_logits_teacher - mask_magnitude * mask_u1, dim=1
     )
-
     low_other_loss = kl_div(log_p2_student, log_p2_teacher, temperature, kl_type)
 
     gdkd_loss = w0 * high_loss + w1 * low_top_loss + w2 * low_other_loss
@@ -342,16 +368,14 @@ def gdkd3_loss(
     high_loss = F.kl_div(log_p0_student, p0_teacher, reduction="batchmean") * (
         temperature**2
     )
-
     # other classes loss
     log_p1_student = F.log_softmax(
         soft_logits_student - mask_magnitude * not_mask_u3, dim=1
     )
-    log_p2_teacher = F.log_softmax(
+    log_p1_teacher = F.log_softmax(
         soft_logits_teacher - mask_magnitude * not_mask_u3, dim=1
     )
-
-    low_other_loss = kl_div(log_p1_student, log_p2_teacher, temperature, kl_type)
+    low_other_loss = kl_div(log_p1_student, log_p1_teacher, temperature, kl_type)
 
     gdkd_loss = w0 * high_loss + w1 * low_other_loss
 
