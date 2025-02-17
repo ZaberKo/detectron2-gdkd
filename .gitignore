@@ -124,4 +124,4 @@ debug/output/
 debug/calc_logits/
 wandb
 
-test.py
+test*.py
