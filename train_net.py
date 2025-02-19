@@ -30,7 +30,9 @@ from datetime import datetime
 import time
 import logging
 import wandb
+import warnings
 
+warnings.filterwarnings("ignore")
 
 def setup_cfg(args):
     """
