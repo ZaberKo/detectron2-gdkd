@@ -224,9 +224,9 @@ def rcnn_gdkd_s_loss(
 
     num_cls = s_logits.shape[1]
 
-    if bg_src == "target":
+    if bg_src == "teacher":
         bg_mask = torch.argmax(t_logits, dim=1) == (num_cls - 1)
-    elif bg_src == "teacher":
+    elif bg_src == "target":
         bg_mask = gt_classes == (num_cls - 1)
     else:
         raise ValueError(f"Unknown background source: {bg_src}")
