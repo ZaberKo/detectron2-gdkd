@@ -231,12 +231,9 @@ def get_masks3(logits):
     mask_u2 = torch.zeros_like(logits, dtype=torch.bool).scatter_(1, ranks[:, 1:2], 1)
 
     # other mask
+    mask_u3 = torch.logical_not(torch.zeros_like(logits, dtype=torch.bool).scatter_(1, ranks, 1))
 
-    not_mask_u3 = torch.zeros_like(logits, dtype=torch.bool).scatter_(1, ranks, 1)
-
-    mask_u3 = torch.logical_not(not_mask_u3)
-
-    return mask_u1, mask_u2, mask_u3, not_mask_u3
+    return mask_u1, mask_u2, mask_u3
 
 
 def cat_mask3(t, mask1, mask2, mask3):
@@ -256,7 +253,7 @@ def gdkd3_loss(
     mask_magnitude=1000,
     kl_type="forward",
 ):
-    mask_u1, mask_u2, mask_u3, not_mask_u3 = get_masks3(logits_teacher)
+    mask_u1, mask_u2, mask_u3 = get_masks3(logits_teacher)
 
     soft_logits_student = logits_student / temperature
     soft_logits_teacher = logits_teacher / temperature
@@ -275,10 +272,10 @@ def gdkd3_loss(
     )
     # other classes loss
     log_p1_student = F.log_softmax(
-        soft_logits_student - mask_magnitude * not_mask_u3, dim=1
+        soft_logits_student - mask_magnitude * mask_u3.logical_not(), dim=1
     )
     log_p1_teacher = F.log_softmax(
-        soft_logits_teacher - mask_magnitude * not_mask_u3, dim=1
+        soft_logits_teacher - mask_magnitude * mask_u3.logical_not(), dim=1
     )
     low_other_loss = kl_div(log_p1_student, log_p1_teacher, temperature, kl_type)
 
