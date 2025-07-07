@@ -69,6 +69,7 @@ cfg.KD.GDKDS.W3 = 1.0 # DKD alpha for bg
 cfg.KD.GDKDS.W4 = 0.25 # DKD beta for bg
 cfg.KD.GDKDS.BG_SRC = "teacher"  # "teacher" or "target"
 cfg.KD.GDKDS.BG_DISTILL_TYPE = "gdkd"  # "dkd" or "gdkd"
+cfg.KD.GDKDS.WARMUP = 5000  # unit: iters
 cfg.KD.GDKDS.T = 1.0
 
 def get_distiller_config():

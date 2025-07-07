@@ -167,7 +167,7 @@ class ReviewGDKDS(RCNNKD):
         t_predictions = self._forward_pure_roi_head(
             self.teacher.roi_heads, t_features, sampled_proposals)
 
-        losses["loss_gdkds"], info_dict = rcnn_gdkd_s_loss(
+        loss_gdkds, info_dict = rcnn_gdkd_s_loss(
             s_predictions,
             t_predictions,
             [x.gt_classes for x in sampled_proposals],
@@ -181,6 +181,10 @@ class ReviewGDKDS(RCNNKD):
             bg_src=self.kd_args.GDKDS.BG_SRC,
             bg_distill_type=self.kd_args.GDKDS.BG_DISTILL_TYPE,
         )
+
+        storage = get_event_storage()
+        losses["loss_gdkds"] = min(storage.iter/self.kd_args.GDKDS.WARMUP, 1.0) * loss_gdkds
+        
 
         self.record_info(info_dict)
 

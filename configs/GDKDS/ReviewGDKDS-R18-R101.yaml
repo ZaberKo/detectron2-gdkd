@@ -1,8 +1,8 @@
 _BASE_: "../Base-Distillation.yaml"
-OUTPUT_DIR: output/ReviewGDKD-R18-R101
+OUTPUT_DIR: output/ReviewGDKDS-R18-R101
 
 EXPERIMENT:
-  TAG: ["ReviewGDKD", "R18", "R101"]
+  TAG: ["ReviewGDKDS", "R18", "R101"]
 
 INPUT:
   FORMAT: "RGB"
@@ -27,7 +27,7 @@ TEACHER:
     RESNETS:
       DEPTH: 101
 KD:
-  TYPE: "ReviewGDKD"
+  TYPE: "ReviewGDKDS"
   REVIEWKD:
     KD_WEIGHT: 1.2
 
