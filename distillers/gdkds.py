@@ -70,7 +70,7 @@ class GDKDS(RCNNKD):
             self.teacher.roi_heads, t_features, sampled_proposals
         )
 
-        losses["loss_gdkds"], info_dict = rcnn_gdkd_s_loss(
+        loss_gdkds, info_dict = rcnn_gdkd_s_loss(
             s_predictions,
             t_predictions,
             [x.gt_classes for x in sampled_proposals],
@@ -85,6 +85,8 @@ class GDKDS(RCNNKD):
             bg_distill_type=self.kd_args.GDKDS.BG_DISTILL_TYPE,
         )
 
+        storage = get_event_storage()
+        losses["loss_gdkds"] = min(storage.iter/self.kd_args.GDKDS.WARMUP, 1.0) * loss_gdkds
         self.record_info(info_dict)
 
         if self.vis_period > 0:
@@ -184,8 +186,6 @@ class ReviewGDKDS(RCNNKD):
 
         storage = get_event_storage()
         losses["loss_gdkds"] = min(storage.iter/self.kd_args.GDKDS.WARMUP, 1.0) * loss_gdkds
-        
-
         self.record_info(info_dict)
 
         s_features_flat = [s_features[f] for f in s_features]
