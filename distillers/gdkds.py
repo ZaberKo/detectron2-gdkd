@@ -10,7 +10,7 @@ from .build import KD_REGISTRY
 from .base import RCNNKD
 from .utils import kl_div
 from .reviewkd import hcl, build_abfs
-from .gdkd import gdkd_loss
+from .gdkd3 import gdkd3_loss
 
 
 @KD_REGISTRY.register()
@@ -70,23 +70,22 @@ class GDKDS(RCNNKD):
             self.teacher.roi_heads, t_features, sampled_proposals
         )
 
-        loss_gdkds, info_dict = rcnn_gdkd_s_loss(
+        losses["loss_gdkds"], info_dict = rcnn_gdkd_s_loss(
             s_predictions,
             t_predictions,
             [x.gt_classes for x in sampled_proposals],
-            k=self.kd_args.GDKDS.TOPK,
             w0=self.kd_args.GDKDS.W0,
             w1=self.kd_args.GDKDS.W1,
             w2=self.kd_args.GDKDS.W2,
             w3=self.kd_args.GDKDS.W3,
-            w4=self.kd_args.GDKDS.W4,
             temperature=self.kd_args.GDKDS.T,
             bg_src=self.kd_args.GDKDS.BG_SRC,
             bg_distill_type=self.kd_args.GDKDS.BG_DISTILL_TYPE,
         )
 
-        storage = get_event_storage()
-        losses["loss_gdkds"] = min(storage.iter/self.kd_args.GDKDS.WARMUP, 1.0) * loss_gdkds
+        if self.kd_args.GDKDS.WARMUP > 0:
+            storage = get_event_storage()
+            losses["loss_gdkds"] = min(storage.iter/self.kd_args.GDKDS.WARMUP, 1.0) * losses["loss_gdkds"]
         self.record_info(info_dict)
 
         if self.vis_period > 0:
@@ -169,23 +168,23 @@ class ReviewGDKDS(RCNNKD):
         t_predictions = self._forward_pure_roi_head(
             self.teacher.roi_heads, t_features, sampled_proposals)
 
-        loss_gdkds, info_dict = rcnn_gdkd_s_loss(
+        losses["loss_gdkds"], info_dict = rcnn_gdkd_s_loss(
             s_predictions,
             t_predictions,
             [x.gt_classes for x in sampled_proposals],
-            k=self.kd_args.GDKDS.TOPK,
             w0=self.kd_args.GDKDS.W0,
             w1=self.kd_args.GDKDS.W1,
             w2=self.kd_args.GDKDS.W2,
             w3=self.kd_args.GDKDS.W3,
-            w4=self.kd_args.GDKDS.W4,
             temperature=self.kd_args.GDKDS.T,
             bg_src=self.kd_args.GDKDS.BG_SRC,
             bg_distill_type=self.kd_args.GDKDS.BG_DISTILL_TYPE,
         )
 
-        storage = get_event_storage()
-        losses["loss_gdkds"] = min(storage.iter/self.kd_args.GDKDS.WARMUP, 1.0) * loss_gdkds
+        if self.kd_args.GDKDS.WARMUP > 0:
+            storage = get_event_storage()
+            losses["loss_gdkds"] = min(storage.iter/self.kd_args.GDKDS.WARMUP, 1.0) * losses["loss_gdkds"]
+
         self.record_info(info_dict)
 
         s_features_flat = [s_features[f] for f in s_features]
@@ -208,17 +207,15 @@ def rcnn_gdkd_s_loss(
     s_predictions,
     t_predictions,
     gt_classes,
-    k,
     w0,
     w1,
     w2,
     w3,
-    w4,
     temperature,
-    bg_src="teacher",
+    bg_src="target",
     bg_distill_type="dkd",
 ):
-    "GDKD with seperate handling of background logits: GDKD(k=1) or DKD"
+    "GDKD3 with seperate handling of background logits: GDKD(k=1) or DKD"
 
     s_logits, s_bbox_offsets = s_predictions
     t_logits, t_bbox_offsets = t_predictions
@@ -226,19 +223,18 @@ def rcnn_gdkd_s_loss(
 
     info_dict = {}
 
-    num_cls = s_logits.shape[1]
+    bg_class_ind = s_logits.shape[1] - 1
 
     if bg_src == "teacher":
-        bg_mask = torch.argmax(t_logits, dim=1) == (num_cls - 1)
+        bg_mask = torch.argmax(t_logits, dim=1) == bg_class_ind
     elif bg_src == "target":
-        bg_mask = gt_classes == (num_cls - 1)
+        bg_mask = gt_classes == bg_class_ind
     else:
         raise ValueError(f"Unknown background source: {bg_src}")
-
     fg_mask = ~bg_mask
 
-    fg_loss_gdkd, fg_loss_info_dict = gdkd_loss(
-        s_logits[fg_mask], t_logits[fg_mask], k, w0, w1, w2, temperature
+    fg_loss_gdkd, fg_loss_info_dict = gdkd3_loss(
+        s_logits[fg_mask], t_logits[fg_mask], w0, w1, temperature
     )
 
     if bg_distill_type == "dkd":
@@ -251,8 +247,8 @@ def rcnn_gdkd_s_loss(
     bg_loss_gdkd, bg_loss_info_dict = dkd_loss(
         s_logits[bg_mask],
         t_logits[bg_mask],
-        alpha=w3,
-        beta=w4,
+        alpha=w2,
+        beta=w3,
         temperature=temperature,
         target=target,
     )

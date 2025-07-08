@@ -61,14 +61,12 @@ cfg.KD.GDKD3.DISTILL_TYPE = "all" # all or fg
 
 
 cfg.KD.GDKDS = CN()
-cfg.KD.GDKDS.TOPK = 2
 cfg.KD.GDKDS.W0 = 1.0
-cfg.KD.GDKDS.W1 = 0.125
-cfg.KD.GDKDS.W2 = 0.25
-cfg.KD.GDKDS.W3 = 1.0 # DKD alpha for bg
-cfg.KD.GDKDS.W4 = 0.25 # DKD beta for bg
-cfg.KD.GDKDS.BG_SRC = "teacher"  # "teacher" or "target"
-cfg.KD.GDKDS.BG_DISTILL_TYPE = "gdkd"  # "dkd" or "gdkd"
+cfg.KD.GDKDS.W1 = 0.25
+cfg.KD.GDKDS.W2 = 1.0 # DKD alpha for bg
+cfg.KD.GDKDS.W3 = 0.25 # DKD beta for bg
+cfg.KD.GDKDS.BG_SRC = "target"  # "teacher" or "target"
+cfg.KD.GDKDS.BG_DISTILL_TYPE = "dkd"  # "dkd" or "gdkd"
 cfg.KD.GDKDS.WARMUP = 5000  # unit: iters
 cfg.KD.GDKDS.T = 1.0
 
